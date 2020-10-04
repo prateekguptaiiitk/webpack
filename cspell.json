@@ -4,6 +4,7 @@
   "words": [
     "webpack",
     "webpack's",
+    "endregion",
     "entrypoint",
     "entrypoints",
     "splitted",
@@ -173,6 +174,13 @@
     "darkblue",
     "darkgreen",
     "darkred",
+    "eqeqeq",
+    "boolish",
+    "analysing",
+    "etags",
+    "destructure",
+    "onconnect",
+    "nwjs",
 
     "webassemblyjs",
     "fsevents",
@@ -209,7 +217,8 @@
     "gitter",
     "codecov",
     "opencollective",
-    "dependabot"
+    "dependabot",
+    "browserslist"
   ],
   "ignoreRegExpList": ["/Author.+/", "/data:.*/", "/\"mappings\":\".+\"/"],
   "ignorePaths": ["**/dist/**", "examples/**/README.md"]

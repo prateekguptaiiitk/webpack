@@ -6,6 +6,7 @@ const webpack = require("..");
 const Stats = require("../lib/Stats");
 const { createFsFromVolume, Volume } = require("memfs");
 const captureStdio = require("./helpers/captureStdio");
+const deprecationTracking = require("./helpers/deprecationTracking");
 
 describe("Compiler", () => {
 	jest.setTimeout(20000);
@@ -164,8 +165,8 @@ describe("Compiler", () => {
 			expect(bundle).not.toMatch("4: function(");
 			expect(bundle).not.toMatch("fixtures");
 			expect(chunk).not.toMatch("fixtures");
-			expect(bundle).toMatch("webpackJsonp");
-			expect(chunk).toMatch('window["webpackJsonp"] || []).push');
+			expect(bundle).toMatch("webpackChunk");
+			expect(chunk).toMatch('self["webpackChunk"] || []).push');
 			done();
 		});
 	});
@@ -337,8 +338,7 @@ describe("Compiler", () => {
 				output: {
 					path: "/directory",
 					filename: "bundle.js"
-				},
-				watch: true
+				}
 			});
 			expect(compiler).toBeInstanceOf(Stats);
 			done();
@@ -517,6 +517,23 @@ describe("Compiler", () => {
 			});
 		});
 	});
+	it("should set compiler.watching correctly", function (done) {
+		const compiler = webpack({
+			context: __dirname,
+			mode: "production",
+			entry: "./c",
+			output: {
+				path: "/directory",
+				filename: "bundle.js"
+			}
+		});
+		compiler.outputFileSystem = createFsFromVolume(new Volume());
+		const watching = compiler.watch({}, (err, stats) => {
+			if (err) return done(err);
+			done();
+		});
+		expect(compiler.watching).toBe(watching);
+	});
 	it("should watch again correctly after first closed watch", function (done) {
 		const compiler = webpack({
 			context: __dirname,
@@ -623,11 +640,14 @@ describe("Compiler", () => {
 			}
 		});
 		compiler.outputFileSystem = createFsFromVolume(new Volume());
+		const invalidHookCb = jest.fn();
 		const doneHookCb = jest.fn();
 		const watchCb = jest.fn();
 		const invalidateCb = jest.fn();
+		compiler.hooks.invalid.tap("afterDoneWatchTest", invalidHookCb);
 		compiler.hooks.done.tap("afterDoneWatchTest", doneHookCb);
 		compiler.hooks.afterDone.tap("afterDoneWatchTest", () => {
+			expect(invalidHookCb).toHaveBeenCalled();
 			expect(doneHookCb).toHaveBeenCalled();
 			expect(watchCb).toHaveBeenCalled();
 			expect(invalidateCb).toHaveBeenCalled();
@@ -650,11 +670,14 @@ describe("Compiler", () => {
 			}
 		});
 		compiler.outputFileSystem = createFsFromVolume(new Volume());
+		const invalidHookCb = jest.fn();
 		const watchCloseCb = jest.fn();
 		const watchCloseHookCb = jest.fn();
 		const invalidateCb = jest.fn();
+		compiler.hooks.invalid.tap("afterDoneWatchTest", invalidHookCb);
 		compiler.hooks.watchClose.tap("afterDoneWatchTest", watchCloseHookCb);
 		compiler.hooks.afterDone.tap("afterDoneWatchTest", () => {
+			expect(invalidHookCb).toHaveBeenCalled();
 			expect(watchCloseCb).toHaveBeenCalled();
 			expect(watchCloseHookCb).toHaveBeenCalled();
 			expect(invalidateCb).toHaveBeenCalled();
@@ -730,6 +753,18 @@ describe("Compiler", () => {
 			expect(failedSpy).toHaveBeenCalledWith(err);
 			done();
 		});
+	});
+	it("should deprecate when watch option is used without callback", () => {
+		const tracker = deprecationTracking.start();
+		webpack({
+			watch: true
+		});
+		const deprecations = tracker();
+		expect(deprecations).toEqual([
+			expect.objectContaining({
+				code: "DEP_WEBPACK_WATCH_WITHOUT_CALLBACK"
+			})
+		]);
 	});
 	describe("infrastructure logging", () => {
 		let capture;

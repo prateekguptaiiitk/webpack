@@ -66,6 +66,8 @@ const describeCases = config => {
 									options.output.chunkFilename = "[name].chunk.[fullhash].js";
 								if (options.output.pathinfo === undefined)
 									options.output.pathinfo = true;
+								if (options.output.publicPath === undefined)
+									options.output.publicPath = "";
 								if (options.output.library === undefined)
 									options.output.library = { type: "commonjs2" };
 								if (!options.optimization) options.optimization = {};
@@ -206,7 +208,7 @@ const describeCases = config => {
 												return JSON.parse(fs.readFileSync(p, "utf-8"));
 											} else {
 												const fn = vm.runInThisContext(
-													"(function(require, module, exports, __dirname, __filename, it, expect, self, window, fetch, document, importScripts, NEXT, STATS) {" +
+													"(function(require, module, exports, __dirname, __filename, it, beforeEach, afterEach, expect, self, window, fetch, document, importScripts, NEXT, STATS) {" +
 														"global.expect = expect;" +
 														'function nsObj(m) { Object.defineProperty(m, Symbol.toStringTag, { value: "Module" }); return m; }' +
 														fs.readFileSync(p, "utf-8") +
@@ -224,6 +226,8 @@ const describeCases = config => {
 													outputDirectory,
 													p,
 													_it,
+													_beforeEach,
+													_afterEach,
 													expect,
 													window,
 													window,
@@ -241,10 +245,12 @@ const describeCases = config => {
 									const info = stats.toJson({ all: false, entrypoints: true });
 									if (config.target === "web") {
 										for (const file of info.entrypoints.main.assets)
-											_require(`./${file}`);
+											_require(`./${file.name}`);
 									} else {
 										const assets = info.entrypoints.main.assets;
-										const result = _require(`./${assets[assets.length - 1]}`);
+										const result = _require(
+											`./${assets[assets.length - 1].name}`
+										);
 										if (typeof result === "object" && "then" in result)
 											promise = promise.then(() => result);
 									}
@@ -267,10 +273,12 @@ const describeCases = config => {
 							20000
 						);
 
-						const { it: _it, getNumberOfTests } = createLazyTestEnv(
-							jasmine.getEnv(),
-							20000
-						);
+						const {
+							it: _it,
+							beforeEach: _beforeEach,
+							afterEach: _afterEach,
+							getNumberOfTests
+						} = createLazyTestEnv(jasmine.getEnv(), 20000);
 					});
 				});
 			});
